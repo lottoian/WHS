@@ -9,17 +9,19 @@ void capture_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 
         if (ip->iph_protocol != IPPROTO_TCP) return;
 
-        if (header->caplen < sizeof(struct ethheader) + ip_header_len + sizeof(struct tcpheader)) {
-                fprintf(stderr, "Packet too short\n");
-                return;
-        }
 
         const struct tcpheader *tcp = (struct tcpheader *)(packet + sizeof(struct ethheader) + ip_header_len);
+        int tcp_header_len = TH_OFF(tcp) * 4;
+
+        int total_headers_size = sizeof(struct ethheader) + ip_header_len + tcp_header_len;
+        const u_char *payload = packet + total_headers_size;
+        int payload_len = header->caplen - total_headers_size;
+
         printf("Source MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
            eth->ether_shost[0], eth->ether_shost[1], eth->ether_shost[2],
            eth->ether_shost[3], eth->ether_shost[4], eth->ether_shost[5]);
 
-    printf("Dest MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+        printf("Dest MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
            eth->ether_dhost[0], eth->ether_dhost[1], eth->ether_dhost[2],
            eth->ether_dhost[3], eth->ether_dhost[4], eth->ether_dhost[5]);
 
@@ -27,6 +29,18 @@ void capture_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
         printf("Dest IP: %s\n", inet_ntoa(ip->iph_destip));
         printf("Source Port: %d\n", ntohs(tcp->tcp_sport));
         printf("Dest Port: %d\n", ntohs(tcp->tcp_dport));
+        if (payload_len > 0){
+                for(int i = 0; i < payload_len; i++){
+                        if( isprint(payload[i]))
+                                printf("%c", payload[i]);
+                        else
+                                printf(".");
+                }
+                printf("\n");
+        }
+        else{
+                printf("None\n");
+        }
         printf("\n\n");
 }
 
